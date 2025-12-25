@@ -24,7 +24,7 @@ class Factory
      * @throws MailerException
      * @see https://symfony.com/doc/current/mailer.html#using-built-in-transports
      */
-    public function byDsn(string $dsn): Mailer
+    public function create(string $dsn): Mailer
     {
         $process = $this->spawnChildProcess();
         return new Mailer($dsn, $process);
