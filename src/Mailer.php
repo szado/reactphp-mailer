@@ -34,7 +34,12 @@ final class Mailer
         $this->worker->terminate();
     }
 
-    public function send(Email $email): PromiseInterface
+    public function send(Email $email): void
+    {
+        await($this->sendAsync($email));
+    }
+
+    public function sendAsync(Email $email): PromiseInterface
     {
         return $this->sendToWorker('send', $email);
     }
