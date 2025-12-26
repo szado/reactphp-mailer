@@ -35,8 +35,8 @@ $mailer->send($email);
 ```
 
 Under the hood, this library uses a thin abstraction based on a separate process worker. This worker keeps running in the 
-background, so bootstrap time is minimal for subsequent email sends. At the same time, it can send only one email at a time.  
-Subsequent `send()` calls are automatically queued until the previous message is sent. This is [just good enough](https://en.wikipedia.org/wiki/Principle_of_good_enough)
+background, so bootstrap time is minimal for subsequent email sends. At the same time, the worker can send only one email at 
+a time. Subsequent `send()` calls are automatically queued until the previous message is sent. This is [just good enough](https://en.wikipedia.org/wiki/Principle_of_good_enough)
 for most use cases, but if you need to send multiple emails concurrently, consider using the [shado/php-resource-pool](https://github.com/shado/php-resource-pool)
 library, which allows you to create a pool of Mailer instances and manage them efficiently.
 
