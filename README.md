@@ -36,7 +36,9 @@ $mailer->send($email);
 
 Under the hood, this library uses a thin abstraction based on a separate process worker. This worker keeps running in the 
 background, so bootstrap time is minimal for subsequent email sends. At the same time, the worker can send only one email at 
-a time. Subsequent `send()` calls are automatically queued until the previous message is sent. This is [just good enough](https://en.wikipedia.org/wiki/Principle_of_good_enough)
+a time. Subsequent `send()` calls are automatically queued until the previous message is sent. 
+
+This is [just good enough](https://en.wikipedia.org/wiki/Principle_of_good_enough)
 for most use cases, but if you need to send multiple emails concurrently, consider using the [shado/php-resource-pool](https://github.com/shado/php-resource-pool)
 library, which allows you to create a pool of Mailer instances and manage them efficiently.
 
@@ -62,7 +64,7 @@ $pool->return($mailer);
 
 ### `dead` event
 
-`dead` event allows to be notified when the child process has died unexpectedly and Mailer should be recreated.
+`dead` event allows to be notified when the worker process has died unexpectedly.
 
 ```php
 $mailer->on('dead', function () {
@@ -79,6 +81,9 @@ SMTP, Sendmail and native transports are supported [out of the box](https://symf
 Additionally, you can use third-party transports like (but not limited to) Mailgun, SendGrid and Amazon SES by [installing the corresponding Symfony packages](https://symfony.com/doc/8.0/mailer.html#using-a-3rd-party-transport).
 
 ## At the end...
+
+This library was heavily inspired by [clue/reactphp-sqlite](https://github.com/clue/reactphp-sqlite), so big thanks to the
+authors for the great work! 💜
 
 - Run tests: `./vendor/bin/phpunit tests`.
 - Feel free to create an issue or submit your PR! 🤗
