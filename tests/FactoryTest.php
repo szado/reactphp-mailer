@@ -3,7 +3,6 @@
 namespace Shado\Tests\React\Mailer;
 
 use React\ChildProcess\Process;
-use React\EventLoop\Loop;
 use React\Stream\ReadableStreamInterface;
 use React\Stream\WritableStreamInterface;
 use ReflectionClass;
