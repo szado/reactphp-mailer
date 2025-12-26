@@ -20,7 +20,7 @@ composer require shado/reactphp-mailer
 To send your first email, all you need to do is create a `Mailer` instance with the desired transport DSN.
 
 ```php
-use Shado\React\Mailer\{ Email, EmailAddress, Factory };
+use Shado\React\Mailer\{ Email, EmailAddress, Factory, MailerException };
 
 $mailer = (new Factory())->create('smtp://user:pass@smtp.example.com:25');
 
@@ -31,15 +31,61 @@ $email = new Email(
     text: 'Hello! This is a test message 😊',
 );
 
-$mailer->send($email);
+try {
+    $mailer->send($email);
+    echo 'Email sent successfully!';
+} catch (MailerException $e) {
+    echo "Failed to send email: {$e->getMessage()}";
+}
 ```
+
+There is also available a promise-based variant of the `send()` method, if you prefer working with lower-level asynchronous API.
+
+```php
+$mailer->sendAsync($email)
+    ->then(function () {
+        echo 'Email sent successfully!';
+    })
+    ->catch(function (MailerException $e) {
+        echo "Failed to send email: {$e->getMessage()}";
+    });
+```
+
+#### Attachments
+
+You can easily attach local files and embed images in your emails. Attachment files are read by the worker process at 
+send time, so the referenced paths must remain accessible until the email is sent.
+
+Regular attachments are included as separate files and are typically presented to the recipient as downloadable items.
+In this case, the attachment name is used as the file name shown by the email client.
+
+Inline attachments, on the other hand, are embedded directly into the message content and must be explicitly marked as
+`inline` and assigned a unique name. This name is used as a content ID (`cid`) and allows the attachment to be referenced
+from HTML content.
+
+```php
+use Shado\React\Mailer\{ Email, Attachment };
+
+$email = new Email(
+    // ...
+    attachments: [
+        new Attachment('/path/to/file.pdf'), // Regular attachment
+        new Attachment(path: '/path/to/image.jpg', name: 'image@app', inline: true), // Inline attachment
+    ],
+    html: 'Hello! Here is an embedded image: <img src="cid:image@app" />', // Reference inline attachment by its content ID
+);
+```
+
+Please be aware of transport-specific limitations, e.g. SMTP servers may impose restrictions on the maximum email size.
+
+#### Sending Emails at Scale
 
 Under the hood, this library uses a thin abstraction based on a separate process worker. This worker keeps running in the 
 background, so bootstrap time is minimal for subsequent email sends. At the same time, the worker can send only one email at 
 a time. Subsequent `send()` calls are automatically queued until the previous message is sent. 
 
-This is [just good enough](https://en.wikipedia.org/wiki/Principle_of_good_enough)
-for most use cases, but if you need to send multiple emails concurrently, consider using the [shado/php-resource-pool](https://github.com/szado/php-resource-pool)
+This is [just good enough](https://en.wikipedia.org/wiki/Principle_of_good_enough) for most use cases, but if you need to 
+send multiple emails concurrently, consider using the [shado/php-resource-pool](https://github.com/szado/php-resource-pool)
 library, which allows you to create a pool of Mailer instances and manage them efficiently.
 
 ```php
