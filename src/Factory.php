@@ -8,13 +8,20 @@ use React\ChildProcess\Process;
 
 class Factory
 {
-    /**
-     * @param string|null $binary Path to the PHP binary to use for spawning worker processes. If null, the same binary as the current process will be used.
-     */
     public function __construct(
+        /**
+         * @var string|null Path to the PHP binary to use for spawning worker processes. If null, the same binary as the current process will be used.
+         */
         private ?string $binary = null,
+
+        /**
+         * For testing purposes only: path to the worker script to use.
+         * @internal
+         */
+        private ?string $workerScript = null,
     ) {
         $this->binary ??= $this->php();
+        $this->workerScript ??= \dirname(__DIR__) . '/res/mailer-worker.php';
     }
 
     /**
@@ -30,19 +37,22 @@ class Factory
         return new Mailer($dsn, $process);
     }
 
+    /**
+     * @see https://github.com/clue/reactphp-sqlite
+     */
     private function spawnChildProcess(): Process
     {
         $cwd = null;
-        $worker = \dirname(__DIR__) . '/res/mailer-worker.php';
 
         // launch worker process directly or inside Phar by mapping relative paths
-        if (\class_exists('Phar', false) && ($phar = \Phar::running(false)) !== '') {
-            $worker = '-r' . 'Phar::loadPhar(' . var_export($phar, true) . ');require(' . \var_export($worker, true) . ');';
+        // ported from clue/reactphp-sqlite, but simplified
+        if (\class_exists(\Phar::class, false) && ($phar = \Phar::running(false)) !== '') {
+            $inline = 'Phar::loadPhar(' . \var_export($phar, true) . ');require(' . \var_export($this->workerScript, true) . ');';
+            $command = 'exec ' . \escapeshellarg($this->binary) . ' -r ' . \escapeshellarg($inline);
         } else {
             $cwd = __DIR__ . '/../res';
-            $worker = \basename($worker);
+            $command = 'exec ' . \escapeshellarg($this->binary) . ' ' . \escapeshellarg(\basename($this->workerScript));
         }
-        $command = 'exec ' . \escapeshellarg($this->binary) . ' ' . escapeshellarg($worker);
 
         // Try to get list of all open FDs (Linux/Mac and others)
         $fds = @\scandir('/dev/fd');
@@ -50,7 +60,6 @@ class Factory
         // Otherwise try temporarily duplicating file descriptors in the range 0-1024 (FD_SETSIZE).
         // This is known to work on more exotic platforms and also inside chroot
         // environments without /dev/fd. Causes many syscalls, but still rather fast.
-        // @codeCoverageIgnoreStart
         if ($fds === false) {
             $fds = [];
             for ($i = 0; $i <= 1024; ++$i) {
@@ -61,27 +70,39 @@ class Factory
                 }
             }
         }
-        // @codeCoverageIgnoreEnd
 
-        // launch process with default STDIO pipes, but inherit STDERR
+        // Normalize FDs: scandir() returns strings plus "." and ".."
+        $fdNums = [];
+        foreach ($fds as $fd) {
+            if (\is_int($fd)) {
+                $fdNums[] = $fd;
+                continue;
+            }
+            if (\is_string($fd) && $fd !== '' && \ctype_digit($fd)) {
+                $fdNums[] = (int)$fd;
+            }
+        }
+        $fdNums = \array_values(\array_unique($fdNums));
+
+        // launch process with default STDIO pipes (stdin/stdout/stderr)
+        // IMPORTANT: stderr MUST be a pipe because Mailer attaches listeners to $process->stderr
         $pipes = [
-            ['pipe', 'r'],
-            ['pipe', 'w'],
-            \defined('STDERR') ? \STDERR : \fopen('php://stderr', 'w')
+            ['pipe', 'r'], // stdin
+            ['pipe', 'w'], // stdout
+            ['pipe', 'w'], // stderr
         ];
 
         // do not inherit open FDs by explicitly overwriting existing FDs with dummy files.
-        // Accessing /dev/null with null spec requires PHP 7.4+, older PHP versions may be restricted due to open_basedir, so let's reuse STDERR here.
-        // additionally, close all dummy files in the child process again
-        foreach ($fds as $fd) {
+        // Accessing /dev/null with null spec requires PHP 7.4+, older PHP versions may be restricted due to open_basedir.
+        foreach ($fdNums as $fd) {
             if ($fd > 2) {
-                $pipes[$fd] = \PHP_VERSION_ID >= 70400 ? ['null'] : $pipes[2];
+                $pipes[$fd] = (\PHP_VERSION_ID >= 70400) ? ['null'] : ['pipe', 'w'];
                 $command .= ' ' . $fd . '>&-';
             }
         }
 
         // default `sh` only accepts single-digit FDs, so run in bash if needed
-        if ($fds && \max($fds) > 9) {
+        if ($fdNums && \max($fdNums) > 9) {
             $command = 'exec bash -c ' . \escapeshellarg($command);
         }
 
