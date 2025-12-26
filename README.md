@@ -39,7 +39,7 @@ background, so bootstrap time is minimal for subsequent email sends. At the same
 a time. Subsequent `send()` calls are automatically queued until the previous message is sent. 
 
 This is [just good enough](https://en.wikipedia.org/wiki/Principle_of_good_enough)
-for most use cases, but if you need to send multiple emails concurrently, consider using the [shado/php-resource-pool](https://github.com/shado/php-resource-pool)
+for most use cases, but if you need to send multiple emails concurrently, consider using the [shado/php-resource-pool](https://github.com/szado/php-resource-pool)
 library, which allows you to create a pool of Mailer instances and manage them efficiently.
 
 ```php
