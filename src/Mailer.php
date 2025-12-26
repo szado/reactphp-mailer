@@ -56,7 +56,7 @@ final class Mailer extends EventEmitter
             JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (PHP_VERSION_ID >= 50606 ? JSON_PRESERVE_ZERO_FRACTION : 0)
         );
 
-        $decoder = new Decoder($this->worker->stdout);
+        $decoder = new Decoder($this->worker->stdout, assoc: true);
 
         $decoder->on('data', $this->handleResponse(...));
 
@@ -101,23 +101,23 @@ final class Mailer extends EventEmitter
 
     private function handleResponse(mixed $data): void
     {
-        if (!is_object($data) || !isset($data->status)) {
+        if (!is_array($data) || array_is_list($data) || !isset($data['status'])) {
             $this->rejectAll(new MailerException('Malformed response from the worker'));
             return;
         }
 
-        if (!isset($data->id) && $data->status === 'error') {
-            $error = $data->message ?? 'Unknown error';
+        if (!isset($data['id']) && $data['status'] === 'error') {
+            $error = $data['message'] ?? 'Unknown error';
             $this->rejectAll(new MailerException("[Worker] Fatal error: $error"));
             return;
         }
 
-        if (!isset($data->id)) {
+        if (!isset($data['id'])) {
             $this->rejectAll(new MailerException('Unexpected response from the worker'));
             return;
         }
 
-        $id = (string)$data->id;
+        $id = (string)$data['id'];
         $deferred = $this->pending[$id] ?? null;
         unset($this->pending[$id]);
 
@@ -125,12 +125,12 @@ final class Mailer extends EventEmitter
             return;
         }
 
-        if ($data->status === 'ok') {
+        if ($data['status'] === 'ok') {
             $deferred->resolve(null);
             return;
         }
 
-        $error = $data->message ?? 'Unknown error';
+        $error = $data['message'] ?? 'Unknown error';
         $deferred->reject(new MailerException("[Worker] $error"));
     }
 

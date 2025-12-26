@@ -30,36 +30,36 @@ $decoder->on('error', static function (Throwable $error) use ($encoder, $decoder
     $decoder->close();
 });
 
-$decoder->on('data', static function (object $data) use ($decoder, $encoder, &$symfonyMailer): void {
-    if (!isset($data->id, $data->type, $data->payload)) {
+$decoder->on('data', static function (mixed $data) use ($decoder, $encoder, &$symfonyMailer): void {
+    if (!is_array($data) || array_is_list($data) || !isset($data['id'], $data['type'], $data['payload'])) {
         $decoder->close();
         $encoder->end(['status' => 'error', 'message' => 'Malformed message']);
         return;
     }
 
-    if ($data->type === 'dsn') {
+    if ($data['type'] === 'dsn') {
         try {
-            $symfonyMailer = new SymfonyMailer(SymfonyTransport::fromDsn((string)$data->payload));
-            $encoder->write(['id' => $data->id, 'status' => 'ok']);
+            $symfonyMailer = new SymfonyMailer(SymfonyTransport::fromDsn((string)$data['payload']));
+            $encoder->write(['id' => $data['id'], 'status' => 'ok']);
         } catch (Throwable $throwable) {
             $decoder->close();
             $encoder->end(['status' => 'error', 'message' => $throwable->getMessage()]);
         }
-    } elseif ($data->type === 'send') {
+    } elseif ($data['type'] === 'send') {
         try {
             if (!$symfonyMailer) {
-                $encoder->write(['id' => $data->id, 'status' => 'error', 'message' => 'Try to send email before DSN initialization']);
+                $encoder->write(['id' => $data['id'], 'status' => 'error', 'message' => 'Try to send email before DSN initialization']);
                 return;
             }
 
-            $message = buildEmailFromPayload((array)$data->payload);
+            $message = buildEmailFromPayload((array)$data['payload']);
             $symfonyMailer->send($message);
-            $encoder->write(['id' => $data->id, 'status' => 'ok']);
+            $encoder->write(['id' => $data['id'], 'status' => 'ok']);
         } catch (Throwable $exception) {
-            $encoder->write(['id' => $data->id, 'status' => 'error', 'message' => $exception->getMessage()]);
+            $encoder->write(['id' => $data['id'], 'status' => 'error', 'message' => $exception->getMessage()]);
         }
     } else {
-        $encoder->write(['id' => $data->id, 'status' => 'error', 'message' => "Unknown message type: $data->type"]);
+        $encoder->write(['id' => $data['id'], 'status' => 'error', 'message' => "Unknown message type: {$data['type']}"]);
     }
 });
 
@@ -85,7 +85,7 @@ function createStreams(): array {
     }
 
     return [
-        new Decoder(new ReadableResourceStream(STDIN)),
+        new Decoder(new ReadableResourceStream(STDIN), assoc: true),
         new Encoder(new WritableResourceStream(STDOUT), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | (PHP_VERSION_ID >= 50606 ? JSON_PRESERVE_ZERO_FRACTION : 0)),
     ];
 }
