@@ -24,6 +24,7 @@ final class Mailer extends EventEmitter
      * @throws MailerException
      */
     public function __construct(
+        #[\SensitiveParameter]
         private readonly string $dsn,
         private readonly Process $worker,
     ) {
