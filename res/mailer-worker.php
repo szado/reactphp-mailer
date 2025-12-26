@@ -113,12 +113,10 @@ function buildEmailFromPayload(array $payload): SymfonyEmail {
     return $symfonyEmail;
 }
 
-function createSymfonyAddress(EmailAddress $emailAddress): SymfonyAddress
-{
+function createSymfonyAddress(EmailAddress $emailAddress): SymfonyAddress {
     return new SymfonyAddress($emailAddress->address, $emailAddress->name ?? '');
 }
 
-function createSymfonyAddresses(array $emailAddresses): array
-{
+function createSymfonyAddresses(array $emailAddresses): array {
     return array_map(createSymfonyAddress(...), $emailAddresses);
 }
