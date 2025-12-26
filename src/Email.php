@@ -6,7 +6,6 @@ namespace Shado\React\Mailer;
 
 use InvalidArgumentException;
 use JsonSerializable;
-use Symfony\Component\Mime\Address;
 
 final class Email implements JsonSerializable
 {
@@ -14,10 +13,11 @@ final class Email implements JsonSerializable
      * @internal
      */
     public static function fromArray(array $array): self {
-        $array['to'] = \array_map(fn($array) => new Address(...$array), $array['to']);
-        $array['cc'] = \array_map(fn($array) => new Address(...$array), $array['cc']);
-        $array['bcc'] = \array_map(fn($array) => new Address(...$array), $array['bcc']);
-        $array['replyTo'] = \array_map(fn($array) => new Address(...$array), $array['replyTo']);
+        $array['from'] = new EmailAddress(...$array['from']);
+        $array['to'] = \array_map(fn($array) => new EmailAddress(...$array), $array['to']);
+        $array['cc'] = \array_map(fn($array) => new EmailAddress(...$array), $array['cc']);
+        $array['bcc'] = \array_map(fn($array) => new EmailAddress(...$array), $array['bcc']);
+        $array['replyTo'] = \array_map(fn($array) => new EmailAddress(...$array), $array['replyTo']);
         $array['attachments'] = \array_map(fn($array) => new Attachment(...$array), $array['attachments']);
         return new self(...$array);
     }
