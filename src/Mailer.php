@@ -4,13 +4,14 @@ namespace Shado\React\Mailer;
 
 use Clue\React\NDJson\Decoder;
 use Clue\React\NDJson\Encoder;
+use Evenement\EventEmitter;
 use React\ChildProcess\Process;
 use React\Promise\Deferred;
 use React\Promise\PromiseInterface;
 use Throwable;
 use function React\Async\await;
 
-final class Mailer
+final class Mailer extends EventEmitter
 {
     /** @var array<string, Deferred> */
     private array $pending = [];
@@ -69,6 +70,7 @@ final class Mailer
         $this->worker->on('exit', function (?int $code, ?int $term): void {
             $message = sprintf('Mailer worker stopped (code: %s, signal: %s)', $code ?? '-', $term ?? '-');
             $this->rejectAll(new MailerException($message));
+            $this->emit('dead', [$code, $term]);
         });
 
         await($this->sendToWorker('dsn', $this->dsn));
