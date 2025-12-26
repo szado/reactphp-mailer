@@ -1,6 +1,6 @@
 {
   "name": "shado/reactphp-mailer",
-  "description": "A simple, asynchronous email sending library built on top of ReactPHP Child Process and Symfony Mailer components.",
+  "description": "A simple, asynchronous email sending library built on top of Symfony Mailer and ReactPHP.",
   "type": "library",
   "license": "MIT",
   "autoload": {
